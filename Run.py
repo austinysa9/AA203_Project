@@ -26,7 +26,8 @@ vision_pose = vision_pose[::num_skips, :train_size]
 X_all = np.transpose(np.hstack((local_position[:, [1, 2, 3, 5, 6, 7]], tip_pose[:, 1:4])))
 U_all = np.transpose(local_setpoint[:, 1:4])
 
-x = calc(U_all, n=10, AB=AB, vine=vine)
+# x = calc(U_all, n=10, AB=AB, vine=vine)
+x = calc(U_all)
 print(X_all.shape, x.shape)
 t = range(1, X_all.shape[1]+1)
 t1 = range(1, x.shape[1]+1)
