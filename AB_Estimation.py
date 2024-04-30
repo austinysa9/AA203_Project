@@ -1,8 +1,10 @@
 import numpy as np
 from scipy.io import loadmat
+import os
+
 
 # Load data from the .mat file
-data = loadmat('austinysa9/AA203_Project/Data.mat')
+data = loadmat('Data.mat')
 local_position = data['local_position']
 local_setpoint = data['local_setpoint']
 tip_pose = data['tip_pose']
