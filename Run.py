@@ -34,7 +34,7 @@ t1 = range(1, x.shape[1]+1)
 # Create a figure and axis
 fig, ax = plt.subplots()
 
-# Customizing the plot
+# # Customizing the plot
 ax.plot(t, X_all[-1,:], color='red', marker='o', linestyle='--')
 ax.plot(t1, x[-1,:], color='blue', marker='o', linestyle='--')
 # Adding title and labels
