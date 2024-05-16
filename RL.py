@@ -50,8 +50,8 @@ class DroneState(object):
     # Generate action of the drone: it will move in unit length based on the random theta value
     def generate_action(self):
         theta = random.uniform(0, 2*math.pi)
-        ux = 0.1 * math.cos(theta)
-        uz = 0.1 * math.sin(theta)
+        ux = 5 * math.cos(theta)
+        uz = 5 * math.sin(theta)
         return [ux, 0, uz]
 
     # Define the reward function
