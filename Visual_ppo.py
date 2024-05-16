@@ -3,6 +3,7 @@ from gym import spaces
 import numpy as np
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv
+import matplotlib.pyplot as plt
 
 class DroneEnv(gym.Env):
     def __init__(self):
@@ -29,26 +30,56 @@ class DroneEnv(gym.Env):
         return next_state, reward, done, {}
 
 env = DroneEnv()
+original_env = env  # Save a reference to the original environment
 print("Initial state:", env.reset())
 
 # Wrap the environment
 env = DummyVecEnv([lambda: env])
 
-# Define and train the PPO model
-model = PPO("MlpPolicy", env, verbose=1)
-model.learn(total_timesteps=500000)
-
-# Save the model
-model.save("ppo_drone")
-
-# Load and test the model
 model = PPO.load("ppo_drone")
 
-# Test the trained model
+# Test the trained model and collect the path
 obs = env.reset()
+path = [obs[0]]  # Store initial observation
 for i in range(100):
     action, _states = model.predict(obs)
     obs, rewards, dones, info = env.step(action)
+    path.append(obs[0])  # Store observation at each step
     if dones:
         break
+
 print("Final state:", obs)
+
+# Convert path to a numpy array for easy slicing
+path = np.array(path)
+
+# Plot the path
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+
+# Extract positions
+x = path[:, 0]
+y = path[:, 1]
+z = path[:, 2]
+x_tip = path[:, 6]
+y_tip = path[:, 7]
+z_tip = path[:, 8]
+print(path)
+
+# Plot the drone's center path
+ax.plot(x, y, z, label='Drone Center Path')
+
+# # Plot the bucket's path
+# ax.plot(x_tip, y_tip, z_tip, label='Bucket Path', linestyle='--')
+
+# Mark the initial and target positions
+ax.scatter([original_env.initial_state[0]], [original_env.initial_state[1]], [original_env.initial_state[2]], color='green', label='Initial Position', s=100)
+ax.scatter([original_env.target_state[0]], [original_env.target_state[1]], [original_env.target_state[2]], color='red', label='Target Position', s=100)
+
+ax.set_xlabel('X Position')
+ax.set_ylabel('Y Position')
+ax.set_zlabel('Z Position')
+ax.set_title('Drone Path from Initial to Target Position')
+ax.legend()
+
+plt.show()
