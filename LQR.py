@@ -137,5 +137,5 @@ def main():
     #s0 = np.array([0.0, 3 * np.pi / 4, 0.0, 0.0])
     s0 = np.array([[0],[0],[1.5],[0],[0],[0],[0],[0],[1.5-vine]])
     s, u = simulate(t, s_ref, u_ref, s0, K)
-    
+    print(u)
     scipy.io.savemat('control_inputs.mat', {'control_inputs': u})
