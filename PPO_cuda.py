@@ -4,6 +4,7 @@ import gym
 from gym import spaces
 from stable_baselines3 import PPO
 from stable_baselines3.common.env_util import make_vec_env
+import torch
 
 # Custom environment class
 class DroneEnv(gym.Env):
@@ -56,11 +57,14 @@ target_state = np.array([10, 0, 1.5, 0, 0, 0, 10, 0, 1], dtype=np.float32)
 # Create the environment
 env = make_vec_env(lambda: DroneEnv(A, B, initial_state, target_state), n_envs=1)
 
+# Verify CUDA availability
+print(f"CUDA available: {torch.cuda.is_available()}")
+
 # Create the PPO model with GPU support
-model = PPO('MlpPolicy', env, verbose=1, device='cuda')
+model = PPO('MlpPolicy', env, verbose=1, device='cuda' if torch.cuda.is_available() else 'cpu')
 
 # Train the model
-model.learn(total_timesteps=3000000)
+model.learn(total_timesteps=300000)
 
 # Save the model
 model.save("ppo_drone")
