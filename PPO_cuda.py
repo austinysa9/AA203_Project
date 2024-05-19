@@ -48,11 +48,12 @@ class DroneEnv(gym.Env):
 
 # Load the data
 AB = np.array(loadmat('Model_AB_1.mat')['AB'])
+vine = np.array(loadmat('Model_AB_1.mat')['vine'])[0, 0]
 A = AB[:, 0:9]
 B = AB[:, 9:12]
 
-initial_state = np.array([0, 0, 1.5, 0, 0, 0, 0, 0, 1], dtype=np.float32)
-target_state = np.array([10, 0, 1.5, 0, 0, 0, 10, 0, 1], dtype=np.float32)
+initial_state = np.array([0, 0, 1.5, 0, 0, 0, 0, 0, 1.5-vine], dtype=np.float32)
+target_state = np.array([10, 0, 1.5, 0, 0, 0, 10, 0, 1.5-vine], dtype=np.float32)
 
 # Create the environment
 env = make_vec_env(lambda: DroneEnv(A, B, initial_state, target_state), n_envs=1)
