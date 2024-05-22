@@ -36,10 +36,11 @@ env = DummyVecEnv([lambda: env])
 
 # Define and train the PPO model
 model = PPO("MlpPolicy", env, verbose=1)
-model.learn(total_timesteps=500000)
+model.learn(total_timesteps=600000)
 
 # Save the model
-model.save("ppo_drone")
+model.save("ppo_drone3")
+# model.save("ppo_drone")
 
 # Load and test the model
 model = PPO.load("ppo_drone")

@@ -36,7 +36,7 @@ print("Initial state:", env.reset())
 # Wrap the environment
 env = DummyVecEnv([lambda: env])
 
-model = PPO.load("ppo_drone")
+model = PPO.load("ppo_drone2")
 
 # Test the trained model and collect the path
 obs = env.reset()
