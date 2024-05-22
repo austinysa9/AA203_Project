@@ -1,9 +1,10 @@
 import gym
 from gym import spaces
 import numpy as np
-from stable_baselines3 import PPO
+from stable_baselines3 import DDPG
 from stable_baselines3.common.vec_env import DummyVecEnv
 import matplotlib.pyplot as plt
+from scipy.io import loadmat
 
 class DroneEnv(gym.Env):
     def __init__(self):
@@ -12,22 +13,46 @@ class DroneEnv(gym.Env):
         self.action_space = spaces.Box(low=-1, high=1, shape=(4,), dtype=np.float32) 
 
         # Initial and target states
-        self.initial_state = np.array([0, 0, 1.5, 0, 0, 0, 0, 0, 1], dtype=np.float32)
-        self.target_state = np.array([10, 0, 1.5, 0, 0, 0, 10, 0, 1], dtype=np.float32)
+        self.vine = np.array(loadmat('Model_AB_1.mat')['vine'])[0, 0]
+        self.initial_state = np.array([0, 0, 1.5, 0, 0, 0, 0, 0, 1.5 - self.vine], dtype=np.float32)
+        self.state = self.initial_state.copy()
+        self.goal = np.array([10, 0, 1.5, 0, 0, 0, 10, 0, 1.5 - self.vine], dtype=np.float32)
 
     def reset(self):
         self.state = self.initial_state.copy()
         return self.state
+    
+    def reward_function(self, current_position, target_position):
+        distance_current_to_target = np.linalg.norm(current_position[:3] - target_position[:3])
+        distance_next_to_target = np.linalg.norm(self.state[:3] - target_position[:3])
+
+        reward = distance_current_to_target - distance_next_to_target
+
+        if distance_next_to_target <= distance_current_to_target:
+            reward += 100
+
+        if distance_next_to_target > distance_current_to_target:
+            reward -= 5
+
+        return reward
 
     def step(self, action):
-        # Apply action to the drone and update the state
-        A = np.eye(9) 
-        B = np.eye(9, 3)  
+        # Load the data
+        AB = np.array(loadmat('Model_AB_1.mat')['AB'])
+        A = AB[:, 0:9]
+        B = AB[:, 9:12]
+        # Change A and B to float32
+        A = A.astype(np.float32)
+        B = B.astype(np.float32)
         next_state = A @ self.state + B @ action
-        reward = -np.linalg.norm(next_state - self.target_state)  
-        done = np.linalg.norm(next_state - self.target_state) < 0.1 
-        self.state = next_state
-        return next_state, reward, done, {}
+        
+        reward = self.reward_function(self.state, self.goal)
+        
+        self.state = next_state.astype(np.float32)
+        terminated = bool(np.linalg.norm(self.state[:3] - self.goal[:3]) < 0.1)
+        truncated = False  # No specific truncation condition
+        return self.state, reward, terminated, truncated, {}
+    
 
 env = DroneEnv()
 original_env = env  # Save a reference to the original environment
@@ -36,7 +61,7 @@ original_env = env  # Save a reference to the original environment
 # Wrap the environment
 env = DummyVecEnv([lambda: env])
 
-model = PPO.load("ppo_drone")
+model = DDPG.load("ddpg_drone_pendulum")
 
 # Test the trained model and collect the path
 obs = env.reset()

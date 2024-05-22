@@ -1,145 +1,158 @@
 import numpy as np
+import matplotlib.pyplot as plt
 import random
 import math
-import Simulation as sim
-import matplotlib.pyplot as plt
-from collections import defaultdict
 
+# Define the dynamic model
+A = np.eye(9)  # Assuming identity matrix for simplicity; replace with actual A matrix
+B = np.eye(9, 3)  # Assuming identity matrix for simplicity; replace with actual B matrix
 
-# Class for drone and drone vine state
 class DroneState(object):
     def __init__(self):
-        self.x = 0.0
-        self.y = 0.0
-        self.z = 0.0
-        self.rot_x = 0.0
-        self.rot_y = 0.0
-        self.rot_z = 0.0
-        self.x_tip = 0.0
-        self.y_tip = 0.0
-        self.z_tip = 0.0
-        self.drone_state = [self.x, self.y, self.z, self.rot_x, self.rot_y, self.rot_z,self.x_tip, self.y_tip, self.z_tip]
+        self.state = np.zeros(9)  # 9 states initialized to 0
         self.done = False
-        self.Q = defaultdict(lambda: defaultdict(lambda: 0.0))
+        self.Q = dict()
         self.epsilon = 1.0
         self.epsilon_max = 1.0
         self.epsilon_min = 0.01
-        self.alpha = 0.8 # Learning rate
-        self.gamma = 0.9 # Discount factor
-        self.actions = [self.generate_action() for _ in range(5)]  # Generate a list of 10 actions
-        self.position = np.array([0.0, 0.0, 1.0 ])
-        self.target = np.array([5.0, 0.0, 4.5])
-        self.best_policy = {}
-        self.path = [self.position.copy()] # Store the path of the drone
+        self.alpha = 0.8
+        self.gamma = 0.9
+        self.trajectory = []
+        self.initial_state = np.array([0, 0, 1.5, 0, 0, 0, 0, 0, 1.5-0.6], dtype=np.float32)
+        self.target_state = np.array([10, 0, 1.5, 0, 0, 0, 10, 0, 1.5-0.6], dtype=np.float32)
+        self.reset()
 
-    # Create the Q-table
-    def create_Q_table(self, state):
-        state_key = tuple(state)  
-        if state_key not in self.Q:
-            self.Q[state_key] = {tuple(action): 0.0 for action in self.actions}
-
+    def build_state(self, state):
+        state = '_'.join(map(str, map(int, np.round(state[:2]))))  # Using only x and y for state representation
+        return state
 
     def get_maxQ(self, state):
-        state_key = tuple(state)  
-        maxQ = -100000
-        for action in self.Q[state_key]:
-            if self.Q[state_key][action] > maxQ:
-                maxQ = self.Q[state_key][action]
-        return maxQ
-    
-    # Generate action of the drone: it will move in unit length based on the random theta value
-    def generate_action(self):
-        theta = random.uniform(0, 2*math.pi)
-        ux = 5 * math.cos(theta)
-        uz = 5 * math.sin(theta)
-        return [ux, 0, uz]
+        maxQ = -10000000
+        for action in self.Q[state]:
+            if self.Q[state][action] > maxQ:
+                maxQ = self.Q[state][action]
+        return maxQ 
 
-    # Define the reward function
-    def reward_function(self, current_position, next_position):
-        distance_current_to_target = np.linalg.norm(current_position - self.target)
-        distance_next_to_target = np.linalg.norm(next_position - self.target)
-        
-        reward = distance_current_to_target - distance_next_to_target
-        
-        if distance_next_to_target <= distance_current_to_target:  
-            reward += 100  
-        
-        if distance_next_to_target > distance_current_to_target:
-            reward -= 5  
-        
-        return reward
-    
-    # # Generate the next state of the drone using sim.calc
-    # def generate_next_state(self, action):
-    #     u = np.array(action).reshape(3, 1)
-    #     x = sim.calc(u)
-    #     next_state = x[:, -1]
-    #     return next_state
+    def createQ(self, state):
+        if state not in self.Q.keys():
+            self.Q[state] = self.Q.get(state, {'0': 0.0, '1': 0.0, '2': 0.0, '3': 0.0})
+        return
 
-    def generate_next_state(self, action):
-        next_state = self.position + action
-        return next_state
-
-    # Update the Q-table
-    def update_Q_table(self, state, action, reward, next_state):
-        state_key = tuple(state)  # Convert state to a tuple
-        next_state_key = tuple(next_state)  # Convert next_state to a tuple
-        action_key = tuple(action)  # Ensure action is a tuple (should be by default if coming from generate_action)
-        self.Q[state_key][action_key] += self.alpha * (reward + self.gamma * self.get_maxQ(next_state_key) - self.Q[state_key][action_key])
-
-    # Choose the action based on epsilon-greedy policy
     def choose_action(self, state):
-        state_key = tuple(state)  # Convert state to a tuple
+        valid_actions = ['0', '1', '2', '3']
         if random.random() < self.epsilon:
-            return random.choice(self.actions)
+            action = random.choice(valid_actions)
         else:
-            return max(self.Q[state_key], key=self.Q[state_key].get, default=random.choice(self.actions))
+            actions = []
+            maxQ = self.get_maxQ(state)
+            for action in self.Q[state]:
+                if self.Q[state][action] == float(maxQ):
+                    actions.append(action)
+            action = random.choice(actions)
+        return action
 
-    # Use Q-learning to train the drone to get best policy from start to target position and store the policy
-    def train(self, start, target, episodes=3):
-        for _ in range(episodes):
-            state = np.array(start)
-            self.create_Q_table(state)
-            while not self.done:
-                action = self.choose_action(state)
-                next_state = self.generate_next_state(action)
-                reward = self.reward_function(state, next_state)
-                self.update_Q_table(state, action, reward, next_state)
-                state = next_state
-                if np.linalg.norm(state - np.array(target)) < 0.1:
-                    self.done = True
-                self.epsilon = max(self.epsilon_min, self.epsilon - (self.epsilon_max - self.epsilon_min) * 0.01)
-                print("Q_table", self.Q)
-        self.extract_best_policy()
+    def learn(self, state, action, reward, next_state):
+        maxQ_next_state = self.get_maxQ(next_state)
+        self.Q[state][action] = (1 - self.alpha) * self.Q[state][action] + self.alpha * (self.gamma * (reward + maxQ_next_state))
+        return
 
-    # Extract the best policy from the Q-table        
-    def extract_best_policy(self):
-        for state in self.Q:
-            self.best_policy[state] = max(self.Q[state], key=self.Q[state].get)
+    def reset(self):
+        self.state = self.initial_state.copy()
+        self.done = False
+        self.trajectory = []  # Reset the trajectory for the new episode
+        return self.state
 
-    # Use the policy to move the drone from start to target position
-    def move_using_policy(self, start, target):
-        state = np.array(start)
-        while np.linalg.norm(state - np.array(target)) >= 0.1:
-            action = self.best_policy.get(tuple(state), random.choice(self.actions))  # Use the best policy or random action if state not in policy
-            state = self.generate_next_state(action)
-            self.path.append(state.copy())
+    def step(self, action):
+        u = np.zeros(3)
+        if action == '0':
+            u = [1, 0, 0]
+        elif action == '1':
+            u = [-1, 0, 0]
+        elif action == '2':
+            u = [0, 1, 0]
+        elif action == '3':
+            u = [0, -1, 0]
 
-    # Plot the path of the drone
-    def plot_path(self):
-        x = [point[0] for point in self.path]
-        y = [point[1] for point in self.path]
-        z = [point[2] for point in self.path]
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-        ax.plot(x, y, z, marker='o')
-        ax.set_xlabel('X')
-        ax.set_ylabel('Y')
-        ax.set_zlabel('Z')
-        plt.show()
+        u = np.array(u).reshape(3, 1)
+        self.state = np.dot(A, self.state) + np.dot(B, u).flatten()
 
-position = np.array([0.0, 0.0, 1.0 ])  # Assuming drone starts at origin
-target = np.array([5.0, 0.0, 4.5])   # Target position on X axis
-drone = DroneState()
-drone.train(position, target)
-drone.move_using_policy(position, target)
+        reward = self.reward_function(self.state, self.target_state)
+        if (self.state[0] < -0.05 or self.state[0] > 10.05 or self.state[1] < -0.05 or self.state[1] > 10.05):
+            self.done = True
+
+        # Append the current position to the trajectory
+        self.trajectory.append(self.state[:3])
+
+        return self.state, reward, self.done
+
+    def reward_function(self, current_position, target_position):
+        distance_current_to_target = np.linalg.norm(current_position[:3] - target_position[:3])
+        distance_next_to_target = np.linalg.norm(self.state[:3] - target_position[:3])
+
+        reward = distance_current_to_target - distance_next_to_target
+
+        if distance_next_to_target <= distance_current_to_target:
+            reward += 100
+
+        if distance_next_to_target > distance_current_to_target:
+            reward -= 5
+
+        return reward
+
+env = DroneState()
+
+num_episodes = 1000
+
+for episode in range(num_episodes):
+    state = env.reset()
+    total_reward = 0
+    while not env.done:
+        state = env.build_state(state)
+        env.createQ(state)
+        action = env.choose_action(state)
+        env.epsilon = env.epsilon_min + (env.epsilon_max - env.epsilon_min) * (math.exp(-0.01 * episode))
+
+        next_state, reward, done = env.step(action)
+        total_reward += reward
+
+        next_state_temp = env.build_state(next_state)
+        env.createQ(next_state_temp)
+        env.learn(state, action, reward, next_state_temp)
+        state = next_state
+
+    print(f"Reward in episode {episode}: {total_reward}")
+
+# Extract Q values for visualization
+grid_size = 11  # Adjust the grid size if necessary
+q_values = np.zeros((grid_size, grid_size))  # Assuming the grid is 11x11 for simplicity
+
+for state in env.Q:
+    x, y = map(int, state.split('_'))
+    if 0 <= x < grid_size and 0 <= y < grid_size:  # Ensure indices are within bounds
+        maxQ = env.get_maxQ(state)
+        q_values[x, y] = maxQ
+
+# Visualization as a heat map
+plt.figure(figsize=(10, 8))
+plt.imshow(q_values, cmap='hot', interpolation='nearest')
+plt.colorbar(label='Max Q value')
+plt.xlabel('X position')
+plt.ylabel('Y position')
+plt.title('Q Table Heat Map')
+plt.show()
+
+# Plotting the drone trajectory
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+ax.set_xlim([-1, 11])
+ax.set_ylim([-1, 11])
+ax.set_zlim([0, 2])
+
+trajectory = np.array(env.trajectory)
+ax.plot(trajectory[:, 0], trajectory[:, 1], trajectory[:, 2], marker='o')
+
+plt.xlabel('X position')
+plt.ylabel('Y position')
+ax.set_zlabel('Z position')
+plt.title('Drone Trajectory')
+plt.show()
