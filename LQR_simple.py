@@ -6,7 +6,7 @@ from Simulation import calc
 from Animation import animate_trajectories
 # Define system matrices
 AB3_0 = np.array(loadmat('AB_from_ball_kick_3_states_n0.mat')['AB'])
-AB9_0 = np.array(loadmat('AB_from_ball_kick_9_states_n0.mat')['AB'])
+#AB9_0 = np.array(loadmat('AB_from_ball_kick_9_states_n0.mat')['AB'])
 vine = np.array(loadmat('AB_from_ball_kick_3_states.mat')['vine'])[0, 0]
 A = AB3_0[:, :3]
 B = AB3_0[:, 3:]
@@ -29,7 +29,7 @@ x_target = np.array([1.5, 1.5, 1.5-vine])  # Target state
 
 # Simulate the system
 dt = 0.05  # Time step
-T = 50     # Total time
+T = 8     # Total time
 x = x0
 states = [x0]
 controls = []
@@ -47,7 +47,7 @@ for t in np.arange(0, T, dt):
 # Plot the results
 states = np.array(states)
 plt.figure()
-#plt.plot(np.arange(0, T, dt), controls)
+plt.plot(np.arange(0, T, dt), controls)
 plt.plot(np.arange(0, T+dt, dt), states[:, 0])
 plt.plot(np.arange(0, T+dt, dt), states[:, 1])
 plt.plot(np.arange(0, T+dt, dt), states[:, 2])
