@@ -16,8 +16,8 @@ class DroneEnv(gym.Env):
         self.target_state = target_state
         self.state = np.copy(initial_state)
         
-        self.action_space = spaces.Box(low=-1, high=1, shape=(B.shape[1],), dtype=np.float32)
-        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(A.shape[0],), dtype=np.float32)
+        # self.action_space = spaces.Box(low=-1, high=1, shape=(B.shape[1],), dtype=np.float32)
+        # self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(A.shape[0],), dtype=np.float32)
 
     def step(self, action):
         # Ensure action has correct shape
@@ -46,12 +46,17 @@ class DroneEnv(gym.Env):
         np.random.seed(seed)
 
 # Load the data
-AB = np.array(loadmat('Model_AB_1.mat')['AB'])
-A = AB[:, 0:9]
-B = AB[:, 9:12]
+# AB = np.array(loadmat('Model_AB_1.mat')['AB'])
+# A = AB[:, 0:9]
+# B = AB[:, 9:12]
+A = np.eye(3)
+B = np.eye(3)
 
-initial_state = np.array([0, 0, 1.5, 0, 0, 0, 0, 0, 1], dtype=np.float32)
-target_state = np.array([10, 0, 1.5, 0, 0, 0, 10, 0, 1], dtype=np.float32)
+# initial_state = np.array([0, 0, 1.5, 0, 0, 0, 0, 0, 1], dtype=np.float32)
+# target_state = np.array([10, 0, 1.5, 0, 0, 0, 10, 0, 1], dtype=np.float32)
+
+initial_state = np.array([0, 0, 1.5], dtype=np.float32)
+target_state = np.array([10, 0, 1.5], dtype=np.float32)
 
 # Create the environment
 env = make_vec_env(lambda: DroneEnv(A, B, initial_state, target_state), n_envs=1)
@@ -60,7 +65,7 @@ env = make_vec_env(lambda: DroneEnv(A, B, initial_state, target_state), n_envs=1
 model = PPO('MlpPolicy', env, verbose=1)
 
 # Train the model
-model.learn(total_timesteps=300000)
+model.learn(total_timesteps=100000)
 
 # Save the model
 model.save("ppo_drone")
